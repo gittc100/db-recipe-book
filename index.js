@@ -15,11 +15,27 @@ const getDishes = tbl => (req, res) => {
     });
 };
 
+const getRecipes = tbl => (req, res) => {
+  db(tbl)
+    .then(data => {
+      res.status(200).json(data);
+    })
+    .catch(err => {
+      res.status(500).json(err);
+    });
+};
+
 const getDish = tbl => (req, res) => {
-  db.select(`${tbl}.*`, 'recipes.*')
+  db.select(
+    `${tbl}.id as Dish ID`,
+    `${tbl}.name as Dish Name`,
+    "recipes.id as Recipe ID",
+    "recipes.name as Recipe Name",
+    "recipes.instructions as Instructions"
+  )
     .from(tbl)
-    .innerJoin('recipes', 'recipes.dish_id', '=', `${tbl}.id` )
-    .where({ 'dishes.id': req.params.id })
+    .innerJoin("recipes", "recipes.dish_id", "=", `${tbl}.id`)
+    .where({ "dishes.id": req.params.id })
     .then(data => {
       if (data.length > 0) {
         res.status(200).json(data);
@@ -33,19 +49,41 @@ const getDish = tbl => (req, res) => {
 };
 
 const addDish = tbl => (req, res) => {
-  db(tbl)
-    .insert(req.body)
-    .then(ids => {
-      res.status(201).json(ids);
-    })
-    .catch(err => {
-      res.status(500).json(err);
-    });
+  if (!req.body.name) {
+    res.status(500).json({ Error_Message: "Provide Name" });
+  } else {
+    db(tbl)
+      .insert(req.body)
+      .then(ids => {
+        res.status(201).json(ids);
+      })
+      .catch(err => {
+        res.status(500).json(err);
+      });
+  }
+};
+
+const addRecipe = tbl => (req, res) => {
+    const {name, dish_id, instructions} = req.body
+  if (!name || !dish_id || !instructions) {
+    res.status(500).json({ Error_Message: "Provide Name || Dish ID || Instructions" });
+  } else {
+    db(tbl)
+      .insert(req.body)
+      .then(ids => {
+        res.status(201).json(ids);
+      })
+      .catch(err => {
+        res.status(500).json(err);
+      });
+  }
 };
 
 server.get(`/api/dishes`, getDishes("dishes"));
+server.get(`/api/recipes`, getRecipes("recipes"));
 server.get(`/api/dishes/:id`, getDish("dishes"));
 server.post(`/api/dishes`, addDish("dishes"));
+server.post(`/api/recipes`, addRecipe("recipes"));
 
 const PORT = 5110;
 server.listen(PORT, () => {
