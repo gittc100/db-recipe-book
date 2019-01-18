@@ -5,36 +5,43 @@ const server = express();
 server.use(express.json());
 const db = knex(knexConfig.development);
 
-const getDishes = tbl => (req, res) => {
-  db(tbl)
-    .then(data => {
-      res.status(200).json(data);
-    })
-    .catch(err => {
-      res.status(500).json(err);
-    });
+const serverError = res => err => {
+  res.status(500).json(err);
+};
+const getSuccess = res => data => {
+  res.status(200).json(data);
 };
 
-const getRecipes = tbl => (req, res) => {
+const postSuccess = res => id => {
+    res.status(201).json(id);
+  };
+
+const stdGet = tbl => (req, res) => {
   db(tbl)
-    .then(data => {
-      res.status(200).json(data);
-    })
-    .catch(err => {
-      res.status(500).json(err);
-    });
+    .then(getSuccess(res))
+    .catch(serverError(res));
 };
 
-const getDish = tbl => (req, res) => {
+// const getRecipes = tbl => (req, res) => {
+//   db(tbl)
+//     .then(data => {
+//       res.status(200).json(data);
+//     })
+//     .catch(err => {
+//       res.status(500).json(err);
+//     });
+// };
+
+const getDish = () => (req, res) => {
   db.select(
-    `${tbl}.id as Dish ID`,
-    `${tbl}.name as Dish Name`,
+    "dishes.id as Dish ID",
+    "dishes.name as Dish Name",
     "recipes.id as Recipe ID",
     "recipes.name as Recipe Name",
     "recipes.instructions as Instructions"
   )
-    .from(tbl)
-    .innerJoin("recipes", "recipes.dish_id", "=", `${tbl}.id`)
+    .from("dishes")
+    .innerJoin("recipes", "recipes.dish_id", "=", "dishes.id")
     .where({ "dishes.id": req.params.id })
     .then(data => {
       if (data.length > 0) {
@@ -43,9 +50,7 @@ const getDish = tbl => (req, res) => {
         res.status(404).json({ message: "Dish not found" });
       }
     })
-    .catch(err => {
-      res.status(500).json(err);
-    });
+    .catch(serverError(res));
 };
 
 const addDish = tbl => (req, res) => {
@@ -54,36 +59,38 @@ const addDish = tbl => (req, res) => {
   } else {
     db(tbl)
       .insert(req.body)
-      .then(ids => {
-        res.status(201).json(ids);
-      })
-      .catch(err => {
-        res.status(500).json(err);
-      });
+      .then(postSuccess(res))
+      .catch(serverError(res));
   }
 };
 
 const addRecipe = tbl => (req, res) => {
-    const {name, dish_id, instructions} = req.body
+  const { name, dish_id, instructions } = req.body;
   if (!name || !dish_id || !instructions) {
-    res.status(500).json({ Error_Message: "Provide Name || Dish ID || Instructions" });
+    res
+      .status(500)
+      .json({ Error_Message: "Provide Name || Dish ID || Instructions" });
   } else {
     db(tbl)
       .insert(req.body)
-      .then(ids => {
-        res.status(201).json(ids);
-      })
-      .catch(err => {
-        res.status(500).json(err);
-      });
+      .then(postSuccess(res))
+      .catch(serverError(res));
   }
 };
 
-server.get(`/api/dishes`, getDishes("dishes"));
-server.get(`/api/recipes`, getRecipes("recipes"));
-server.get(`/api/dishes/:id`, getDish("dishes"));
+
+
+// server.get(`/api/dishes`, getDishes("dishes"));
+// server.get(`/api/recipes`, getRecipes("recipes"));
+
+server.get(`/api/dishes/:id`, getDish());
 server.post(`/api/dishes`, addDish("dishes"));
 server.post(`/api/recipes`, addRecipe("recipes"));
+
+const tableNames = ["dishes", "recipes"];
+tableNames.forEach(name => {
+  server.get(`/api/${name}`, stdGet(name));
+});
 
 const PORT = 5110;
 server.listen(PORT, () => {
